@@ -202,14 +202,12 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) 
 							"hash":                 tx.Hash(),
 							"from":                 from,
 							"to":                   tx.To(),
-							"value":                tx.Value(),
-							"input":                tx.Data(),
-							"nonce":                tx.Nonce(),
+							"value":                (*hexutil.Big)(tx.Value()),
+							"input":                hexutil.Bytes(tx.Data()),
 							"type":                 hexutil.Uint64(tx.Type()),
-							"chainId":              tx.ChainId(),
-							"gasPrice":             tx.GasPrice(),
-							"maxFeePerGas":         tx.GasFeeCap(),
-							"maxPriorityFeePerGas": tx.GasTipCap(),
+							"gasPrice":             (*hexutil.Big)(tx.GasPrice()),
+							"maxFeePerGas":         (*hexutil.Big)(tx.GasFeeCap()),
+							"maxPriorityFeePerGas": (*hexutil.Big)(tx.GasTipCap()),
 						}
 					}
 					_ = notifier.Notify(rpcSub.ID, result)
