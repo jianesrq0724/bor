@@ -5,9 +5,9 @@ on:
     branches-ignore:
       - '**'
     tags:
-      - 'release-v*.*.*'
+      - 'v*.*.*'
       # to be used by fork patch-releases ^^
-      - 'release-v*.*.*-*'
+      - 'v*.*.*-*'
 
 jobs:
   goreleaser:
