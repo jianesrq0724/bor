@@ -2,11 +2,8 @@ name: amoy_deb_profiles
 
 on:
   push:
-    paths:
-      - '**'
     tags:
-      - 'v*.*.*'
-      - 'v*.*.*-*'
+      - 'disabled-*'  # Changed to never match - workflow disabled
 
 jobs:
   build:
