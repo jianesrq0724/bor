@@ -21,6 +21,7 @@ env:
 
 jobs:
   build-bor:
+    if: false  # Disabled - only release.yml should run
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -41,6 +42,7 @@ jobs:
           retention-days: 1
 
   build-heimdall-v2:
+    if: false  # Disabled - only release.yml should run
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -64,6 +66,7 @@ jobs:
           retention-days: 1
 
   e2e-tests:
+    if: false  # Disabled - only release.yml should run
     needs:
       - build-bor
       - build-heimdall-v2

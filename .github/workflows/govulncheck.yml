@@ -8,6 +8,7 @@ on:
 
 jobs:
   govulncheck:
+    if: false  # Disabled - only release.yml should run
     name: Run govulncheck
     runs-on: ubuntu24.04-16core-64GB-600SSD-bor
     steps:

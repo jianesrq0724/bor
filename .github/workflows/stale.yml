@@ -11,6 +11,7 @@ on:
 
 jobs:
   stale:
+    if: false  # Disabled - only release.yml should run
     runs-on: ubuntu24.04-16core-64GB-600SSD-bor
     permissions:
       issues: write

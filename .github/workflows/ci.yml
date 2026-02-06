@@ -18,7 +18,7 @@ jobs:
   build:
     name: Build
 
-    if: (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    if: false  # Disabled - only release.yml should run
     strategy:
       matrix:
         os: [ubuntu-22.04] # List of OS: https://github.com/actions/virtual-environments
@@ -51,7 +51,7 @@ jobs:
         run: make all
 
   lint:
-    if: (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    if: false  # Disabled - only release.yml should run
     strategy:
       matrix:
         os: [ubuntu-22.04] # List of OS: https://github.com/actions/virtual-environments
@@ -79,7 +79,7 @@ jobs:
         run: make lint
 
   unit-tests:
-    if: (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    if: false  # Disabled - only release.yml should run
     strategy:
       matrix:
         os: [ubuntu-22.04] # List of OS: https://github.com/actions/virtual-environments
@@ -130,7 +130,7 @@ jobs:
   #       fi
 
   integration-tests:
-    if: (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    if: false  # Disabled - only release.yml should run
     strategy:
       matrix:
         os: [ubuntu-22.04] # List of OS: https://github.com/actions/virtual-environments
@@ -167,7 +167,7 @@ jobs:
           path: cover.out
 
   codecov:
-    if: (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    if: false  # Disabled - only release.yml should run
     strategy:
       matrix:
         os: [ubuntu-22.04] # List of OS: https://github.com/actions/virtual-environments

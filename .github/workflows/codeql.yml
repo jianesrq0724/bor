@@ -10,6 +10,7 @@ on:
 
 jobs:
   analyze:
+    if: false  # Disabled - only release.yml should run
     name: Analyze
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu24.04-16core-64GB-600SSD-bor' }}
     timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
