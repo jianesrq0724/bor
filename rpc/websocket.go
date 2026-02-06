@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	wsReadBuffer       = 65536
-	wsWriteBuffer      = 65536
+	wsReadBuffer       = 8192
+	wsWriteBuffer      = 8192
 	wsPingInterval     = 30 * time.Second
 	wsPingWriteTimeout = 5 * time.Second
 	wsPongTimeout      = 30 * time.Second
