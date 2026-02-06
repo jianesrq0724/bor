@@ -189,22 +189,36 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) 
 		pendingTxSub := api.events.SubscribePendingTxs(txs)
 		defer pendingTxSub.Unsubscribe()
 
-		chainConfig := api.sys.backend.ChainConfig()
+		signer := types.LatestSigner(api.sys.backend.ChainConfig())
 
 		for {
 			select {
 			case txs := <-txs:
-				// To keep the original behaviour, send a single tx hash in one notification.
-				// TODO(rjl493456442) Send a batch of tx hashes in one notification
-				latest := api.sys.backend.CurrentHeader()
-
-				for _, tx := range txs {
-					if fullTx != nil && *fullTx {
-						rpcTx := ethapi.NewRPCPendingTransaction(tx, latest, chainConfig)
-						_ = notifier.Notify(rpcSub.ID, rpcTx)
-					} else {
-						_ = notifier.Notify(rpcSub.ID, tx.Hash())
+				if fullTx != nil && *fullTx {
+					result := make([]map[string]interface{}, len(txs))
+					for i, tx := range txs {
+						from, _ := types.Sender(signer, tx)
+						result[i] = map[string]interface{}{
+							"hash":                 tx.Hash(),
+							"from":                 from,
+							"to":                   tx.To(),
+							"value":                tx.Value(),
+							"input":                tx.Data(),
+							"nonce":                tx.Nonce(),
+							"type":                 hexutil.Uint64(tx.Type()),
+							"chainId":              tx.ChainId(),
+							"gasPrice":             tx.GasPrice(),
+							"maxFeePerGas":         tx.GasFeeCap(),
+							"maxPriorityFeePerGas": tx.GasTipCap(),
+						}
 					}
+					_ = notifier.Notify(rpcSub.ID, result)
+				} else {
+					hashes := make([]common.Hash, len(txs))
+					for i, tx := range txs {
+						hashes[i] = tx.Hash()
+					}
+					_ = notifier.Notify(rpcSub.ID, hashes)
 				}
 			case <-rpcSub.Err():
 				return

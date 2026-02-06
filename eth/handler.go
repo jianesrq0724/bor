@@ -56,7 +56,7 @@ import (
 const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
-	txChanSize = 4096
+	txChanSize = 32768
 
 	// chainHeadChanSize is the size of channel listening to ChainHeadEvent.
 	chainHeadChanSize = 128
@@ -159,6 +159,7 @@ type handler struct {
 	blockRange    *blockRangeState
 
 	requiredBlocks map[uint64]common.Hash
+	localTxs       sync.Map // Track RPC-submitted transactions
 
 	enableBlockTracking bool
 	txAnnouncementOnly  bool
@@ -720,64 +721,27 @@ func EthPeersContainsID(ethPeers []*ethPeer, id string) bool {
 // - And, separately, as announcements to all peers which are not known to
 // already have the given transaction.
 func (h *handler) BroadcastTransactions(txs types.Transactions) {
-	var (
-		blobTxs  int // Number of blob transactions to announce only
-		largeTxs int // Number of large transactions to announce only
-
-		directCount int // Number of transactions sent directly to peers (duplicates included)
-		annCount    int // Number of transactions announced across all peers (duplicates included)
-
-		txset = make(map[*ethPeer][]common.Hash) // Set peer->hash to transfer directly
-		annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
-
-		signer = types.LatestSigner(h.chain.Config())
-		choice = newBroadcastChoice(h.nodeID, h.txBroadcastKey)
-		peers  = h.peers.all()
-	)
-
+	peers := h.peers.all()
+	txset := make(map[*ethPeer][]common.Hash)
+	var localCount int
 	for _, tx := range txs {
-		var directSet map[*ethPeer]struct{}
-		switch {
-		case tx.Type() == types.BlobTxType:
-			blobTxs++
-		case tx.Size() > txMaxBroadcastSize:
-			largeTxs++
-		default:
-			// bor: respect announce-only mode
-			// If enabled, skip selecting direct peers so we only announce hashes.
-			if !h.txAnnouncementOnly {
-				// Get transaction sender address. Here we can ignore any error
-				// since we're just interested in any value.
-				txSender, _ := types.Sender(signer, tx)
-				directSet = choice.choosePeers(peers, txSender)
-			}
+		if _, isLocal := h.localTxs.Load(tx.Hash()); !isLocal {
+			continue
 		}
-
+		localCount++
+		h.localTxs.Delete(tx.Hash())
 		for _, peer := range peers {
-			if peer.KnownTransaction(tx.Hash()) {
-				continue
-			}
-			if _, ok := directSet[peer]; ok {
-				// Send direct.
+			if !peer.KnownTransaction(tx.Hash()) {
 				txset[peer] = append(txset[peer], tx.Hash())
-			} else {
-				// Send announcement.
-				annos[peer] = append(annos[peer], tx.Hash())
 			}
 		}
 	}
-
 	for peer, hashes := range txset {
-		directCount += len(hashes)
 		peer.AsyncSendTransactions(hashes)
 	}
-
-	for peer, hashes := range annos {
-		annCount += len(hashes)
-		peer.AsyncSendPooledTransactionHashes(hashes)
+	if localCount > 0 {
+		log.Debug("Broadcast local txs", "count", localCount, "peers", len(peers))
 	}
-	log.Debug("Distributed transactions", "plaintxs", len(txs)-blobTxs-largeTxs, "blobtxs", blobTxs, "largetxs", largeTxs,
-		"bcastcount", directCount, "anncount", annCount)
 }
 
 // minedBroadcastLoop sends mined blocks to connected peers.
