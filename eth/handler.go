@@ -717,30 +717,66 @@ func EthPeersContainsID(ethPeers []*ethPeer, id string) bool {
 }
 
 // BroadcastTransactions will propagate a batch of transactions
-// - To a square root of all peers for non-blob transactions
-// - And, separately, as announcements to all peers which are not known to
-// already have the given transaction.
+// - To 50% of peers as full transactions (using deterministic selection)
+// - And, separately, as announcements to the remaining 50% of peers
 func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	peers := h.peers.all()
-	txset := make(map[*ethPeer][]common.Hash)
+	if len(peers) == 0 {
+		return
+	}
+
+	txset := make(map[*ethPeer][]common.Hash) // Full transaction broadcast
+	annos := make(map[*ethPeer][]common.Hash) // Hash-only announcements
 	var localCount int
+
+	signer := types.LatestSigner(h.chain.Config())
+	choice := newBroadcastChoice(h.nodeID, h.txBroadcastKey)
+
 	for _, tx := range txs {
+		// Only process local transactions (RPC submitted)
 		if _, isLocal := h.localTxs.Load(tx.Hash()); !isLocal {
 			continue
 		}
 		localCount++
 		h.localTxs.Delete(tx.Hash())
+
+		// Use deterministic hash algorithm to select 50% of peers
+		txSender, _ := types.Sender(signer, tx)
+		directSet := choice.choosePeers(peers, txSender)
+
+		// Distribute to direct send or announce lists
 		for _, peer := range peers {
-			if !peer.KnownTransaction(tx.Hash()) {
+			if peer.KnownTransaction(tx.Hash()) {
+				continue
+			}
+			if _, ok := directSet[peer]; ok {
+				// Send full transaction
 				txset[peer] = append(txset[peer], tx.Hash())
+			} else {
+				// Send only hash announcement
+				annos[peer] = append(annos[peer], tx.Hash())
 			}
 		}
 	}
+
+	// Send full transactions to direct peers
+	var directCount int
 	for peer, hashes := range txset {
+		directCount += len(hashes)
 		peer.AsyncSendTransactions(hashes)
 	}
+
+	// Send hash announcements to remaining peers
+	var annoCount int
+	for peer, hashes := range annos {
+		annoCount += len(hashes)
+		peer.AsyncSendPooledTransactionHashes(hashes)
+	}
+
 	if localCount > 0 {
-		log.Debug("Broadcast local txs", "count", localCount, "peers", len(peers))
+		log.Debug("Broadcast local txs", "count", localCount,
+			"direct peers", len(txset), "direct txs", directCount,
+			"announce peers", len(annos), "announce txs", annoCount)
 	}
 }
 
@@ -1036,9 +1072,9 @@ func (bc *broadcastChoice) choosePeers(peers []*ethPeer, txSender common.Address
 		return cmp.Compare(a.score, b.score)
 	})
 
-	// Take top n.
+	// Take top n (50% of peers).
 	clear(bc.buffer)
-	n := int(math.Ceil(math.Sqrt(float64(len(bc.tmp)))))
+	n := int(math.Ceil(float64(len(bc.tmp)) / 2.0))
 	for i := range n {
 		bc.buffer[bc.tmp[i].p] = struct{}{}
 	}
