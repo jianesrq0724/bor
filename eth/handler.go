@@ -23,7 +23,6 @@ import (
 	"maps"
 	"math"
 	"math/big"
-	"math/rand"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -57,7 +56,7 @@ import (
 const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
-	txChanSize = 4096
+	txChanSize = 8192
 
 	// chainHeadChanSize is the size of channel listening to ChainHeadEvent.
 	chainHeadChanSize = 128
@@ -718,8 +717,8 @@ func EthPeersContainsID(ethPeers []*ethPeer, id string) bool {
 }
 
 // BroadcastTransactions will propagate a batch of transactions
-// - To 50% of peers as full transactions (random selection)
-// - And, separately, as announcements to the remaining 50% of peers
+// - Local transactions: to 100% of peers as full transactions
+// - Remote transactions: to sqrt(N) peers using deterministic selection
 func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	peers := h.peers.all()
 	if len(peers) == 0 {
@@ -728,35 +727,40 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 
 	txset := make(map[*ethPeer][]common.Hash) // Full transaction broadcast
 	annos := make(map[*ethPeer][]common.Hash) // Hash-only announcements
-	var localCount int
+	var localCount, remoteCount int
 
-	// Randomly shuffle peers and split 50/50
-	rand.Shuffle(len(peers), func(i, j int) {
-		peers[i], peers[j] = peers[j], peers[i]
-	})
-	splitIndex := len(peers) / 2
-	directPeers := peers[:splitIndex]
-	annoPeers := peers[splitIndex:]
+	// Prepare deterministic selector for remote transactions
+	signer := types.LatestSigner(h.chain.Config())
+	choice := newBroadcastChoice(h.nodeID, h.txBroadcastKey)
 
 	for _, tx := range txs {
-		// Only process local transactions (RPC submitted)
-		if _, isLocal := h.localTxs.Load(tx.Hash()); !isLocal {
-			continue
-		}
-		localCount++
-		h.localTxs.Delete(tx.Hash())
+		if _, isLocal := h.localTxs.Load(tx.Hash()); isLocal {
+			// Local transactions: send to 100% of peers
+			localCount++
+			h.localTxs.Delete(tx.Hash())
 
-		// Send full transaction to first 50%
-		for _, peer := range directPeers {
-			if !peer.KnownTransaction(tx.Hash()) {
-				txset[peer] = append(txset[peer], tx.Hash())
+			for _, peer := range peers {
+				if !peer.KnownTransaction(tx.Hash()) {
+					txset[peer] = append(txset[peer], tx.Hash())
+				}
 			}
-		}
 
-		// Send hash announcement to remaining 50%
-		for _, peer := range annoPeers {
-			if !peer.KnownTransaction(tx.Hash()) {
-				annos[peer] = append(annos[peer], tx.Hash())
+		} else {
+			// Remote transactions: use deterministic selection (sqrt(N) peers)
+			remoteCount++
+
+			txSender, _ := types.Sender(signer, tx)
+			directSet := choice.choosePeers(peers, txSender)
+
+			for _, peer := range peers {
+				if peer.KnownTransaction(tx.Hash()) {
+					continue
+				}
+				if _, ok := directSet[peer]; ok {
+					txset[peer] = append(txset[peer], tx.Hash())
+				} else {
+					annos[peer] = append(annos[peer], tx.Hash())
+				}
 			}
 		}
 	}
@@ -775,11 +779,11 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		peer.AsyncSendPooledTransactionHashes(hashes)
 	}
 
-	if localCount > 0 {
-		log.Debug("Broadcast local txs", "count", localCount,
-			"direct peers", len(directPeers), "direct txs", directCount,
-			"announce peers", len(annoPeers), "announce txs", annoCount)
-	}
+	// if localCount > 0 || remoteCount > 0 {
+	// 	log.Debug("Broadcast transactions",
+	// 		"local", localCount, "local peers", len(peers),
+	// 		"remote", remoteCount, "remote direct", len(txset), "remote announce", len(annos))
+	// }
 }
 
 // minedBroadcastLoop sends mined blocks to connected peers.
