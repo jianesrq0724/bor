@@ -767,7 +767,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	}
 
 	// Send hash announcements to remaining peers
-	var annoCount int
 	for peer, hashes := range annos {
 		peer.AsyncSendPooledTransactionHashes(hashes)
 	}
