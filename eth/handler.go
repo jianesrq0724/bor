@@ -727,7 +727,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 
 	txset := make(map[*ethPeer][]common.Hash) // Full transaction broadcast
 	annos := make(map[*ethPeer][]common.Hash) // Hash-only announcements
-	var localCount, remoteCount int
 
 	// Prepare deterministic selector for remote transactions
 	signer := types.LatestSigner(h.chain.Config())
@@ -736,7 +735,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	for _, tx := range txs {
 		if _, isLocal := h.localTxs.Load(tx.Hash()); isLocal {
 			// Local transactions: send to 100% of peers
-			localCount++
 			h.localTxs.Delete(tx.Hash())
 
 			for _, peer := range peers {
@@ -747,7 +745,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 
 		} else {
 			// Remote transactions: use deterministic selection (sqrt(N) peers)
-			// remoteCount++
 
 			// txSender, _ := types.Sender(signer, tx)
 			// directSet := choice.choosePeers(peers, txSender)
@@ -779,11 +776,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		peer.AsyncSendPooledTransactionHashes(hashes)
 	}
 
-	// if localCount > 0 || remoteCount > 0 {
-	// 	log.Debug("Broadcast transactions",
-	// 		"local", localCount, "local peers", len(peers),
-	// 		"remote", remoteCount, "remote direct", len(txset), "remote announce", len(annos))
-	// }
 }
 
 // minedBroadcastLoop sends mined blocks to connected peers.
