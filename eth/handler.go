@@ -747,21 +747,21 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 
 		} else {
 			// Remote transactions: use deterministic selection (sqrt(N) peers)
-			remoteCount++
+			// remoteCount++
 
-			txSender, _ := types.Sender(signer, tx)
-			directSet := choice.choosePeers(peers, txSender)
+			// txSender, _ := types.Sender(signer, tx)
+			// directSet := choice.choosePeers(peers, txSender)
 
-			for _, peer := range peers {
-				if peer.KnownTransaction(tx.Hash()) {
-					continue
-				}
-				if _, ok := directSet[peer]; ok {
-					txset[peer] = append(txset[peer], tx.Hash())
-				} else {
-					annos[peer] = append(annos[peer], tx.Hash())
-				}
-			}
+			// for _, peer := range peers {
+			// 	if peer.KnownTransaction(tx.Hash()) {
+			// 		continue
+			// 	}
+			// 	if _, ok := directSet[peer]; ok {
+			// 		txset[peer] = append(txset[peer], tx.Hash())
+			// 	} else {
+			// 		annos[peer] = append(annos[peer], tx.Hash())
+			// 	}
+			// }
 		}
 	}
 
