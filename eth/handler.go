@@ -729,8 +729,8 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	annos := make(map[*ethPeer][]common.Hash) // Hash-only announcements
 
 	// Prepare deterministic selector for remote transactions
-	// signer := types.LatestSigner(h.chain.Config())
-	// choice := newBroadcastChoice(h.nodeID, h.txBroadcastKey)
+	signer := types.LatestSigner(h.chain.Config())
+	choice := newBroadcastChoice(h.nodeID, h.txBroadcastKey)
 
 	for _, tx := range txs {
 		if _, isLocal := h.localTxs.Load(tx.Hash()); isLocal {
