@@ -776,9 +776,6 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		peer.AsyncSendPooledTransactionHashes(hashes)
 	}
 
-	log.Debug("Distributed transactions", "plaintxs", len(txs)-blobTxs-largeTxs, "blobtxs", blobTxs, "largetxs", largeTxs,
-	"bcastcount", directCount, "anncount", annCount)
-
 }
 
 // minedBroadcastLoop sends mined blocks to connected peers.
