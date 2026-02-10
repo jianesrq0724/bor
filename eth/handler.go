@@ -748,17 +748,18 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 			// txSender, _ := types.Sender(signer, tx)
 			// directSet := choice.choosePeers(peers, txSender)
 
-			// for _, peer := range peers {
-			// 	if peer.KnownTransaction(tx.Hash()) {
-			// 		continue
-			// 	}
-			// 	annos[peer] = append(annos[peer], tx.Hash())
-			// 	// if _, ok := directSet[peer]; ok {
-			// 	// 	txset[peer] = append(txset[peer], tx.Hash())
-			// 	// } else {
-			// 	// 	annos[peer] = append(annos[peer], tx.Hash())
-			// 	// }
-			// }
+			for _, peer := range peers {
+				if peer.KnownTransaction(tx.Hash()) {
+					continue
+				}
+				annos[peer] = append(annos[peer], tx.Hash())
+				
+				// if _, ok := directSet[peer]; ok {
+				// 	txset[peer] = append(txset[peer], tx.Hash())
+				// } else {
+				// 	annos[peer] = append(annos[peer], tx.Hash())
+				// }
+			}
 		}
 	}
 
