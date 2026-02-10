@@ -729,8 +729,8 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	annos := make(map[*ethPeer][]common.Hash) // Hash-only announcements
 
 	// Prepare deterministic selector for remote transactions
-	signer := types.LatestSigner(h.chain.Config())
-	choice := newBroadcastChoice(h.nodeID, h.txBroadcastKey)
+	// signer := types.LatestSigner(h.chain.Config())
+	// choice := newBroadcastChoice(h.nodeID, h.txBroadcastKey)
 
 	for _, tx := range txs {
 		if _, isLocal := h.localTxs.Load(tx.Hash()); isLocal {
@@ -745,19 +745,20 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 
 		} else {
 			// Remote transactions: use deterministic selection (sqrt(N) peers)
-			txSender, _ := types.Sender(signer, tx)
-			directSet := choice.choosePeers(peers, txSender)
+			// txSender, _ := types.Sender(signer, tx)
+			// directSet := choice.choosePeers(peers, txSender)
 
-			for _, peer := range peers {
-				if peer.KnownTransaction(tx.Hash()) {
-					continue
-				}
-				if _, ok := directSet[peer]; ok {
-					txset[peer] = append(txset[peer], tx.Hash())
-				} else {
-					annos[peer] = append(annos[peer], tx.Hash())
-				}
-			}
+			// for _, peer := range peers {
+			// 	if peer.KnownTransaction(tx.Hash()) {
+			// 		continue
+			// 	}
+			// 	annos[peer] = append(annos[peer], tx.Hash())
+			// 	// if _, ok := directSet[peer]; ok {
+			// 	// 	txset[peer] = append(txset[peer], tx.Hash())
+			// 	// } else {
+			// 	// 	annos[peer] = append(annos[peer], tx.Hash())
+			// 	// }
+			// }
 		}
 	}
 
